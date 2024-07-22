@@ -6,7 +6,7 @@
  */
 
 /* Set below flag to get debug prints */
-#define MMU_DEBUG_PRINTS	0
+#define MMU_DEBUG_PRINTS	1
 
 #if MMU_DEBUG_PRINTS
 /* To dump page table entries while filling them, set DUMP_PTE macro */
