@@ -1246,10 +1246,21 @@ int arch_mem_domain_partition_remove(struct k_mem_domain *domain,
 static int map_thread_stack(struct k_thread *thread,
 			    struct arm_mmu_ptables *ptables)
 {
-	size_t size = thread->stack_info.size + CONFIG_MMU_PAGE_SIZE * 4;
-	return private_map(ptables, "thread_stack", thread->stack_info.start,
-			    thread->stack_info.start, size ,
-			    MT_P_RW_U_RW | MT_NORMAL);
+
+	return private_map(ptables, "thread_stack",
+
+#ifdef CONFIG_EXPERIMENTAL_ASLR
+			K_KERNEL_STACK_BUFFER(thread->stack_obj),	// phys
+			thread->stack_info.start,			// virt
+			thread->stack_info.size
+			+ CONFIG_MMU_PAGE_SIZE
+			* CONFIG_THREAD_STACK_OVERCOMMITMENT
+#else
+			thread->stack_info.start,
+			thread->stack_info.start,
+			thread->stack_info.size
+#endif
+			,MT_P_RW_U_RW | MT_NORMAL);
 }
 
 int arch_mem_domain_thread_add(struct k_thread *thread)
@@ -1337,7 +1348,11 @@ void z_arm64_thread_mem_domains_init(struct k_thread *incoming)
 
 	/* Map the thread stack */
 	map_thread_stack(incoming, ptables);
-	incoming->stack_info.start += 3 * CONFIG_MMU_PAGE_SIZE;
+
+#ifdef CONFIG_EXPERIMENTAL_ALSR
+	incoming->stack_info.start += CONFIG_MMU_PAGE_SIZE
+		* CONFIG_THREAD_STACK_OVERCOMMITMENT / 2;
+#endif
 
 	z_arm64_swap_ptables(incoming);
 }

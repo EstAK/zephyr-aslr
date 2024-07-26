@@ -202,6 +202,19 @@ config THREAD_STACK_MEM_MAPPED
 	  mapped with guard pages on both ends to catch undesired
 	  accesses.
 
+config EXPERIMENTAL_ASLR
+	bool "Enables the ASLR"
+	depends on MMU
+	help
+	  This option enables experimental ASLR
+
+config THREAD_STACK_OVERCOMMITMENT
+	int "Number of MMU_PAGE over allocated"
+	default 0
+	depends on EXPERIMENTAL_ASLR
+	help
+	  Number of pages over allocated
+
 config THREAD_ABORT_HOOK
 	bool
 	help

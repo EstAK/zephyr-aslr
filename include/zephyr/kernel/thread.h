@@ -172,7 +172,7 @@ struct _thread_stack_info {
 	 */
 	size_t delta;
 
-#if defined(CONFIG_THREAD_STACK_MEM_MAPPED)
+#if defined(CONFIG_THREAD_STACK_MEM_MAPPED) || defined CONFIG_EXPERIMENTAL_ASLR
 	struct {
 		/** Base address of the memory mapped thread stack */
 		k_thread_stack_t *addr;
