@@ -1248,10 +1248,9 @@ static int map_thread_stack(struct k_thread *thread,
 {
 
 	return private_map(ptables, "thread_stack",
-
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-			K_KERNEL_STACK_BUFFER(thread->stack_obj),	// phys
-			thread->stack_info.start,			// virt
+			(uintptr_t)K_THREAD_STACK_BUFFER(thread->stack_obj),
+			thread->stack_info.start,
 			thread->stack_info.size
 			+ CONFIG_MMU_PAGE_SIZE
 			* CONFIG_THREAD_STACK_OVERCOMMITMENT
@@ -1349,9 +1348,11 @@ void z_arm64_thread_mem_domains_init(struct k_thread *incoming)
 	/* Map the thread stack */
 	map_thread_stack(incoming, ptables);
 
-#ifdef CONFIG_EXPERIMENTAL_ALSR
-	incoming->stack_info.start += CONFIG_MMU_PAGE_SIZE
-		* CONFIG_THREAD_STACK_OVERCOMMITMENT / 2;
+#ifdef CONFIG_EXPERIMENTAL_ASLR
+	incoming->stack_info.start += (CONFIG_MMU_PAGE_SIZE
+		* CONFIG_THREAD_STACK_OVERCOMMITMENT / 2) ;
+	incoming->stack_info.mapped.addr += (CONFIG_MMU_PAGE_SIZE
+		* CONFIG_THREAD_STACK_OVERCOMMITMENT / 2) ;
 #endif
 
 	z_arm64_swap_ptables(incoming);

@@ -89,9 +89,14 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 	extern void z_arm64_exit_exc(void);
 	struct arch_esf *pInitCtx;
 
-	// add anon mapping some time in the future
-	thread->stack_info.mapped.addr = (k_thread_stack_t *)0x00002000;
-	thread->stack_info.start = K_THREAD_STACK_BUFFER(thread->stack_info.mapped.addr);
+#if defined(CONFIG_USERSPACE) && defined(CONFIG_EXPERIMENTAL_ASLR)
+	if (is_user(thread)) {
+		// add anon mapping some time in the future
+		thread->stack_info.mapped.addr = (char *)0x12323000;
+		thread->stack_info.start =
+			(uintptr_t)K_THREAD_STACK_BUFFER(thread->stack_info.mapped.addr);
+	}
+#endif
 
 	/*
 	 * Clean the thread->arch to avoid unexpected behavior because the
@@ -162,6 +167,7 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 	uintptr_t stack_el0, stack_el1;
 	uint64_t tmpreg;
 
+
 	/* Map the thread stack */
 	z_arm64_thread_mem_domains_init(_current);
 
@@ -174,20 +180,15 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 	// this part is totally wip and is subject to a lot of changes
 #ifdef CONFIG_EXPERIMENTAL_ASLR
 	stack_el1 = (uintptr_t)(_current->stack_info.mapped.addr + ARCH_THREAD_STACK_RESERVED);
-
-
-	register void *x0 __asm__("x0") = (k_thread_entry_t)_current->stack_info.mapped.addr;
-	register void *x1 __asm__("x1") = _current->stack_info.mapped.addr + sizeof(uint64_t);
-	register void *x2 __asm__("x2") = _current->stack_info.mapped.addr + 2 * sizeof(uint64_t);;
-	register void *x3 __asm__("x3") = _current->stack_info.mapped.addr + 3 * sizeof(uint64_t);;
 #else
 	stack_el1 = (uintptr_t)(_current->stack_obj + ARCH_THREAD_STACK_RESERVED);
+#endif
+
+
 	register void *x0 __asm__("x0") = user_entry;
 	register void *x1 __asm__("x1") = p1;
 	register void *x2 __asm__("x2") = p2;
 	register void *x3 __asm__("x3") = p3;
-#endif
-
 
 	/* we don't want to be disturbed when playing with SPSR and ELR */
 	arch_irq_lock();
