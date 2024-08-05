@@ -91,10 +91,9 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 
 #if defined(CONFIG_USERSPACE) && defined(CONFIG_EXPERIMENTAL_ASLR)
 	if (is_user(thread)) {
-		// add anon mapping some time in the future
-		thread->stack_info.mapped.addr = (char *)0x12323000;
-		thread->stack_info.start =
-			(uintptr_t)K_THREAD_STACK_BUFFER(thread->stack_info.mapped.addr);
+		// todo add anon mapping
+		thread->stack_info.mapped.addr = (k_thread_stack_t *)0x12323000;
+		thread->stack_info.va_start = K_THREAD_STACK_BUFFER(thread->stack_info.mapped.addr);
 	}
 #endif
 
@@ -172,18 +171,22 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 	z_arm64_thread_mem_domains_init(_current);
 
 	/* Top of the user stack area */
-	stack_el0 = Z_STACK_PTR_ALIGN(_current->stack_info.start +
-				      _current->stack_info.size -
-				      _current->stack_info.delta);
+	stack_el0 = Z_STACK_PTR_ALIGN(
+#ifdef CONFIG_EXPERIMENTAL_ASLR
+			_current->stack_info.va_start
+#else
+			_current->stack_info.start
+#endif
+			+
+			_current->stack_info.size -
+			_current->stack_info.delta);
 
 	/* Top of the privileged non-user-accessible part of the stack */
-	// this part is totally wip and is subject to a lot of changes
 #ifdef CONFIG_EXPERIMENTAL_ASLR
 	stack_el1 = (uintptr_t)(_current->stack_info.mapped.addr + ARCH_THREAD_STACK_RESERVED);
 #else
 	stack_el1 = (uintptr_t)(_current->stack_obj + ARCH_THREAD_STACK_RESERVED);
 #endif
-
 
 	register void *x0 __asm__("x0") = user_entry;
 	register void *x1 __asm__("x1") = p1;
@@ -192,6 +195,13 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 
 	/* we don't want to be disturbed when playing with SPSR and ELR */
 	arch_irq_lock();
+
+#ifdef CONFIG_EXPERIMENTAL_ASLR
+	__asm__ volatile (
+	"msr tpidr_el0, %[thread_id]"
+	:: [thread_id] "r" (_current->stack_info.mapped.addr)
+	: "memory");
+#endif
 
 	/* set up and drop into EL0 */
 	__asm__ volatile (

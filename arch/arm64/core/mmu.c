@@ -1247,10 +1247,11 @@ static int map_thread_stack(struct k_thread *thread,
 			    struct arm_mmu_ptables *ptables)
 {
 
+	// maq the physical stack obj to the virtual stack object
 	return private_map(ptables, "thread_stack",
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-			(uintptr_t)K_THREAD_STACK_BUFFER(thread->stack_obj),
-			thread->stack_info.start,
+			thread->stack_obj,
+			thread->stack_info.mapped.addr,
 			thread->stack_info.size
 			+ CONFIG_MMU_PAGE_SIZE
 			* CONFIG_THREAD_STACK_OVERCOMMITMENT
@@ -1349,11 +1350,12 @@ void z_arm64_thread_mem_domains_init(struct k_thread *incoming)
 	map_thread_stack(incoming, ptables);
 
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-	incoming->stack_info.start += (CONFIG_MMU_PAGE_SIZE
+	// todo choose a random offset instead
+	incoming->stack_info.va_start += (CONFIG_MMU_PAGE_SIZE
 		* CONFIG_THREAD_STACK_OVERCOMMITMENT / 2) ;
-	incoming->stack_info.mapped.addr += (CONFIG_MMU_PAGE_SIZE
-		* CONFIG_THREAD_STACK_OVERCOMMITMENT / 2) ;
+	MMU_DEBUG("shifted the stack start : %lx\n", incoming->stack_info.start);
 #endif
+
 
 	z_arm64_swap_ptables(incoming);
 }
