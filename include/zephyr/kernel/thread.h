@@ -173,10 +173,14 @@ struct _thread_stack_info {
 	size_t delta;
 
 #ifdef CONFIG_EXPERIMENTAL_ASLR
+	/* Memory mapped start of the thread-writable stack area */
 	uintptr_t va_start;
+
+	/* Base address of the memory mapped thread stack */
+	k_thread_stack_t *va_addr;
 #endif
 
-#if defined CONFIG_THREAD_STACK_MEM_MAPPED || defined CONFIG_EXPERIMENTAL_ASLR
+#if defined CONFIG_THREAD_STACK_MEM_MAPPED
 	struct {
 		/** Base address of the memory mapped thread stack */
 		k_thread_stack_t *addr;

@@ -14,6 +14,7 @@
 #include <zephyr/kernel.h>
 #include <ksched.h>
 #include <zephyr/arch/cpu.h>
+#include <zephyr/random/random.h>
 
 /*
  * Note about stack usage:
@@ -82,6 +83,28 @@ static bool is_user(struct k_thread *thread)
 }
 #endif
 
+#if defined(CONFIG_USERSPACE) && defined(CONFIG_EXPERIMENTAL_ASLR)
+/* Generates a random adrress for the stack to be virtually mapped to
+ */
+uintptr_t random_stack_offset()
+{
+	uintptr_t random_val;
+
+	sys_rand_get((uint8_t*)&random_val, sizeof(random_val));
+
+	/* align the virtual address to the page size
+	 * only using ARM_VA_BITS - 1 bits to avoid the
+	 * round up making the va invalid
+	 */
+	const uintptr_t fuzz = ROUND_UP(
+			random_val,
+			CONFIG_MMU_PAGE_SIZE
+			) & GENMASK(CONFIG_ARM64_VA_BITS - 1, 0);
+
+	return fuzz;
+}
+#endif
+
 void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 		     char *stack_ptr, k_thread_entry_t entry,
 		     void *p1, void *p2, void *p3)
@@ -91,9 +114,8 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 
 #if defined(CONFIG_USERSPACE) && defined(CONFIG_EXPERIMENTAL_ASLR)
 	if (is_user(thread)) {
-		// todo add anon mapping
-		thread->stack_info.mapped.addr = (k_thread_stack_t *)0x12323000;
-		thread->stack_info.va_start = K_THREAD_STACK_BUFFER(thread->stack_info.mapped.addr);
+		thread->stack_info.va_addr = (k_thread_stack_t *)random_stack_offset();
+		thread->stack_info.va_start = K_THREAD_STACK_BUFFER(thread->stack_info.va_addr);
 	}
 #endif
 
@@ -133,7 +155,6 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 	} else {
 		pInitCtx->elr = (uint64_t)z_thread_entry;
 	}
-
 #else
 	pInitCtx->elr = (uint64_t)z_thread_entry;
 #endif
@@ -166,7 +187,6 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 	uintptr_t stack_el0, stack_el1;
 	uint64_t tmpreg;
 
-
 	/* Map the thread stack */
 	z_arm64_thread_mem_domains_init(_current);
 
@@ -183,7 +203,7 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 
 	/* Top of the privileged non-user-accessible part of the stack */
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-	stack_el1 = (uintptr_t)(_current->stack_info.mapped.addr + ARCH_THREAD_STACK_RESERVED);
+	stack_el1 = (uintptr_t)(_current->stack_info.va_addr + ARCH_THREAD_STACK_RESERVED);
 #else
 	stack_el1 = (uintptr_t)(_current->stack_obj + ARCH_THREAD_STACK_RESERVED);
 #endif
@@ -199,7 +219,7 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 #ifdef CONFIG_EXPERIMENTAL_ASLR
 	__asm__ volatile (
 	"msr tpidr_el0, %[thread_id]"
-	:: [thread_id] "r" (_current->stack_info.mapped.addr)
+	:: [thread_id] "r" (_current->stack_info.va_addr)
 	: "memory");
 #endif
 
