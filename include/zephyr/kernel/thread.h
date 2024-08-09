@@ -180,7 +180,7 @@ struct _thread_stack_info {
 	k_thread_stack_t *va_addr;
 #endif
 
-#if defined CONFIG_THREAD_STACK_MEM_MAPPED
+#if defined(CONFIG_THREAD_STACK_MEM_MAPPED)
 	struct {
 		/** Base address of the memory mapped thread stack */
 		k_thread_stack_t *addr;

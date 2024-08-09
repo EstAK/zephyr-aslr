@@ -729,7 +729,7 @@ static int add_map(struct arm_mmu_ptables *ptables, const char *name,
 	int ret;
 
 	key = k_spin_lock(&xlat_lock);
-	ret = __add_map(ptables, name, phys, virt, size , attrs);
+	ret = __add_map(ptables, name, phys, virt, size, attrs);
 	k_spin_unlock(&xlat_lock, key);
 	return ret;
 }
@@ -1347,6 +1347,7 @@ void z_arm64_thread_mem_domains_init(struct k_thread *incoming)
 
 	/* Map the thread stack */
 	map_thread_stack(incoming, ptables);
+
 	z_arm64_swap_ptables(incoming);
 }
 
