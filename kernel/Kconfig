@@ -204,16 +204,12 @@ config THREAD_STACK_MEM_MAPPED
 
 config EXPERIMENTAL_ASLR
 	bool "Enables the ASLR"
-	depends on MMU
+	depends on MMU && ARCH_SUPPORTS_EXPERIMENTAL_ASLR
 	help
-	  This option enables experimental ASLR
+	  Enables the ability to map do a non 1:1 mapping for the user thread
+	  stack. The kernel will randomly choose an address that "should" not
+	  be used for.
 
-config THREAD_STACK_OVERCOMMITMENT
-	int "Number of MMU_PAGE over allocated"
-	default 0
-	depends on EXPERIMENTAL_ASLR
-	help
-	  Number of pages over allocated
 
 config THREAD_ABORT_HOOK
 	bool

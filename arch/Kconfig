@@ -52,6 +52,7 @@ config ARM64
 	select IRQ_OFFLOAD_NESTED if IRQ_OFFLOAD
 	select BARRIER_OPERATIONS_ARCH
 	select ARCH_HAS_DIRECTED_IPIS
+	select ARCH_SUPPORTS_EXPERIMENTAL_ASLR
 	help
 	  ARM64 (AArch64) architecture
 
@@ -693,6 +694,11 @@ config ARCH_SUPPORTS_MEM_MAPPED_STACKS
 	bool
 	help
 	  Select when the architecture supports memory mapped stacks.
+
+config ARCH_SUPPORTS_EXPERIMENTAL_ASLR
+	bool
+	help
+	  Select when the architecture supports the experimental aslr
 
 #
 # Other architecture related options

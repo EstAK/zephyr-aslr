@@ -84,23 +84,29 @@ static bool is_user(struct k_thread *thread)
 #endif
 
 #if defined(CONFIG_USERSPACE) && defined(CONFIG_EXPERIMENTAL_ASLR)
-/* Generates a random adrress for the stack to be virtually mapped to
+/*
+ * Generates a random address for the stack to be virtually mapped to
  */
-uintptr_t random_stack_offset()
+uintptr_t random_address()
 {
 	uintptr_t random_val;
 
 	sys_rand_get((uint8_t*)&random_val, sizeof(random_val));
 
-	/* align the virtual address to the page size
+	/*
+	 * Align the virtual address to the page size
 	 * only using ARM_VA_BITS - 1 bits to avoid the
 	 * round up making the va invalid
 	 */
 	const uintptr_t fuzz = ROUND_UP(
-			random_val,
+			/*
+			 * Arbirary address that should be high enough
+			 * to not map to any place that is already in
+			 * use by other parts of the thread
+			 */
+			0x50000000 + random_val,
 			CONFIG_MMU_PAGE_SIZE
 			) & GENMASK(CONFIG_ARM64_VA_BITS - 1, 0);
-
 	return fuzz;
 }
 #endif
@@ -113,9 +119,21 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 	struct arch_esf *pInitCtx;
 
 #if defined(CONFIG_USERSPACE) && defined(CONFIG_EXPERIMENTAL_ASLR)
+	/*
+	 * Choose a random address for the stack in virtual memory when
+	 * creating a user thread
+	 */
 	if (is_user(thread)) {
-		thread->stack_info.va_addr = (k_thread_stack_t *)random_stack_offset();
-		thread->stack_info.va_start = K_THREAD_STACK_BUFFER(thread->stack_info.va_addr);
+		thread->stack_info.va_addr = (k_thread_stack_t *)random_address();
+		thread->stack_info.start = K_THREAD_STACK_BUFFER(thread->stack_info.va_addr);
+
+		/*
+		 * the tls is used later on as a base pointer for accessing all the variables
+		 * inside of the user thread using offsets
+		 */
+#ifdef CONFIG_THREAD_LOCAL_STORAGE
+		thread->tls = thread->stack_info.va_addr;
+#endif
 	}
 #endif
 
@@ -192,14 +210,9 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 
 	/* Top of the user stack area */
 	stack_el0 = Z_STACK_PTR_ALIGN(
-#ifdef CONFIG_EXPERIMENTAL_ASLR
-			_current->stack_info.va_start
-#else
-			_current->stack_info.start
-#endif
-			+
-			_current->stack_info.size -
-			_current->stack_info.delta);
+		_current->stack_info.start +
+		_current->stack_info.size -
+		_current->stack_info.delta);
 
 	/* Top of the privileged non-user-accessible part of the stack */
 #ifdef CONFIG_EXPERIMENTAL_ASLR
@@ -215,13 +228,6 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 
 	/* we don't want to be disturbed when playing with SPSR and ELR */
 	arch_irq_lock();
-
-#ifdef CONFIG_EXPERIMENTAL_ASLR
-	__asm__ volatile (
-	"msr tpidr_el0, %[thread_id]"
-	:: [thread_id] "r" (_current->stack_info.va_addr)
-	: "memory");
-#endif
 
 	/* set up and drop into EL0 */
 	__asm__ volatile (

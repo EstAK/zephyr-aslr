@@ -172,10 +172,28 @@ struct _thread_stack_info {
 	 */
 	size_t delta;
 
+	/* Enabling this option will allow for the physical stack to be
+	 * randomly mapped to a virtual address. Currently only works on
+	 * ARM64
+	 *
+	 *            	        phys                          virt
+	 *                  address space                address space
+	 *                +---------------+            +---------------+
+	 *                |               |            |               |
+	 *                |               |        ->  +---------------+ -> va_addr
+	 *                |               |       /    |               |
+	 *                |               |      /     +---------------+ -> start
+	 *                |               |     /      |               |
+	 *                |               |    /       +---------------+ -> stack limit
+	 *   stack_obj -> +---------------+ <-/        |               |
+	 *                |               |            |               |
+	 *       start -> +---------------+            |               |
+	 *                |               |            |               |
+	 *       stack -> +---------------+            |               |
+	 *       limit    |               |            |               |
+	 *                +---------------+            +---------------+
+	 */
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-	/* Memory mapped start of the thread-writable stack area */
-	uintptr_t va_start;
-
 	/* Base address of the memory mapped thread stack */
 	k_thread_stack_t *va_addr;
 #endif
@@ -332,8 +350,9 @@ struct k_thread {
 	/**
 	 * Base address of thread stack.
 	 *
-	 * If memory mapped stack (CONFIG_THREAD_STACK_MEM_MAPPED)
-	 * is enabled, this is the physical address of the stack.
+	 * If memory mapped stack (CONFIG_THREAD_STACK_MEM_MAPPED ||
+	 * CONFIG_EXPERIMENTAL_ASLR) is enabled, this is the physical
+	 * address of the stack.
 	 */
 	k_thread_stack_t *stack_obj;
 
