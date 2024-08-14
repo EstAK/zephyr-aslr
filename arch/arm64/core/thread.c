@@ -89,24 +89,24 @@ static bool is_user(struct k_thread *thread)
  */
 uintptr_t random_address()
 {
-	uintptr_t random_val;
+	uintptr_t offset;
 
-	sys_rand_get((uint8_t*)&random_val, sizeof(random_val));
+	sys_rand_get(&offset, sizeof(offset));
+
+	/*
+	 * Setting the offset to stay between the max VA bits and
+	 * the lower bound
+	 */
+	offset %= GENMASK(CONFIG_ARM64_VA_BITS - 1, 0)
+		- CONFIG_EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS;
 
 	/*
 	 * Align the virtual address to the page size
 	 * only using ARM_VA_BITS - 1 bits to avoid the
 	 * round up making the va invalid
 	 */
-	const uintptr_t fuzz = ROUND_UP(
-			/*
-			 * Arbirary address that should be high enough
-			 * to not map to any place that is already in
-			 * use by other parts of the thread
-			 */
-			0x50000000 + random_val,
-			CONFIG_MMU_PAGE_SIZE
-			) & GENMASK(CONFIG_ARM64_VA_BITS - 1, 0);
+	const uintptr_t fuzz = ROUND_UP(CONFIG_EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS
+			+ offset, CONFIG_MMU_PAGE_SIZE);
 	return fuzz;
 }
 #endif

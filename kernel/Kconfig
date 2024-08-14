@@ -210,6 +210,14 @@ config EXPERIMENTAL_ASLR
 	  stack. The kernel will randomly choose an address that "should" not
 	  be used for.
 
+config EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS
+	hex "Lower Bound for the VA address when choosing it randomly"
+	default 0x50000000
+	depends on MMU && ARCH_SUPPORTS_EXPERIMENTAL_ASLR
+	help
+	  This value should never be lower than the .text section as to not
+	  overwrite it in a user thread table when mapping PA to VA
+
 
 config THREAD_ABORT_HOOK
 	bool
