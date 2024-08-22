@@ -176,10 +176,10 @@ struct _thread_stack_info {
 	 * randomly mapped to a virtual address. Currently only works on
 	 * ARM64
 	 *
-	 *            	        phys                          virt
-	 *                  address space                address space
-	 *                +---------------+            +---------------+
-	 *                |               |            |               |
+	 *            	        phys        the kernel        virt
+	 *                  address space   randomly     address space
+	 *                +---------------+ chooses a  +---------------+
+	 *                |               | va         |               |
 	 *                |               |        ->  +---------------+ -> va_addr
 	 *                |               |       /    |               |
 	 *                |               |      /     +---------------+ -> start
@@ -193,6 +193,7 @@ struct _thread_stack_info {
 	 *       limit    |               |            |               |
 	 *                +---------------+            +---------------+
 	 */
+
 #ifdef CONFIG_EXPERIMENTAL_ASLR
 	/* Base address of the memory mapped thread stack */
 	k_thread_stack_t *va_addr;

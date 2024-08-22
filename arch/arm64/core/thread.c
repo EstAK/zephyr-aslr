@@ -125,14 +125,15 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 	 */
 	if (is_user(thread)) {
 		thread->stack_info.va_addr = (k_thread_stack_t *)random_address();
-		thread->stack_info.start = K_THREAD_STACK_BUFFER(thread->stack_info.va_addr);
+		thread->stack_info.start = (uintptr_t)K_THREAD_STACK_BUFFER(
+				thread->stack_info.va_addr);
 
 		/*
 		 * the tls is used later on as a base pointer for accessing all the variables
 		 * inside of the user thread using offsets
 		 */
 #ifdef CONFIG_THREAD_LOCAL_STORAGE
-		thread->tls = thread->stack_info.va_addr;
+		thread->tls = (uintptr_t)thread->stack_info.va_addr;
 #endif
 	}
 #endif

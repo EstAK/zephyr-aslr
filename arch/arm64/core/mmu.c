@@ -1250,12 +1250,12 @@ static int map_thread_stack(struct k_thread *thread,
 	/* map the physical stack obj to the virtual stack obj */
 	return private_map(ptables, "thread_stack",
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-			thread->stack_obj,
-			thread->stack_info.va_addr,
+			(uintptr_t)thread->stack_obj,
+			(uintptr_t)thread->stack_info.va_addr,
 #else
             /* potentially remap the stack obj to the same place */
-			thread->stack_obj,
-			thread->stack_obj,
+			(uintptr_t)thread->stack_obj,
+			(uintptr_t)thread->stack_obj,
 #endif
             /* additional MMU_PAGE_SIZE as we map from the stack_ptr
              * instead of stack_info.start
