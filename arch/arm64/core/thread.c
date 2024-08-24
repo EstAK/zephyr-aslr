@@ -87,7 +87,7 @@ static bool is_user(struct k_thread *thread)
 /*
  * Generates a random address for the stack to be virtually mapped to
  */
-uintptr_t random_address()
+uintptr_t random_address(void)
 {
 	uintptr_t offset;
 
@@ -97,16 +97,16 @@ uintptr_t random_address()
 	 * Setting the offset to stay between the max VA bits and
 	 * the lower bound
 	 */
-	offset %= GENMASK(CONFIG_ARM64_VA_BITS - 1, 0)
-		- CONFIG_EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS;
+	offset %= GENMASK(CONFIG_ARM64_VA_BITS - 1, 0) -
+			  CONFIG_EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS;
 
 	/*
 	 * Align the virtual address to the page size
 	 * only using ARM_VA_BITS - 1 bits to avoid the
 	 * round up making the va invalid
 	 */
-	const uintptr_t fuzz = ROUND_UP(CONFIG_EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS
-			+ offset, CONFIG_MMU_PAGE_SIZE);
+	const uintptr_t fuzz = ROUND_UP(CONFIG_EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS + offset,
+					CONFIG_MMU_PAGE_SIZE);
 	return fuzz;
 }
 #endif
@@ -125,8 +125,8 @@ void arch_new_thread(struct k_thread *thread, k_thread_stack_t *stack,
 	 */
 	if (is_user(thread)) {
 		thread->stack_info.va_addr = (k_thread_stack_t *)random_address();
-		thread->stack_info.start = (uintptr_t)K_THREAD_STACK_BUFFER(
-				thread->stack_info.va_addr);
+		thread->stack_info.start =
+			(uintptr_t)K_THREAD_STACK_BUFFER(thread->stack_info.va_addr);
 
 		/*
 		 * the tls is used later on as a base pointer for accessing all the variables
@@ -210,10 +210,9 @@ FUNC_NORETURN void arch_user_mode_enter(k_thread_entry_t user_entry,
 	z_arm64_thread_mem_domains_init(_current);
 
 	/* Top of the user stack area */
-	stack_el0 = Z_STACK_PTR_ALIGN(
-		_current->stack_info.start +
-		_current->stack_info.size -
-		_current->stack_info.delta);
+	stack_el0 = Z_STACK_PTR_ALIGN(_current->stack_info.start +
+				      _current->stack_info.size -
+				      _current->stack_info.delta);
 
 	/* Top of the privileged non-user-accessible part of the stack */
 #ifdef CONFIG_EXPERIMENTAL_ASLR

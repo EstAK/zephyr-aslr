@@ -203,7 +203,7 @@ config THREAD_STACK_MEM_MAPPED
 	  accesses.
 
 config EXPERIMENTAL_ASLR
-	bool "Enables the ASLR"
+	bool "Thread stack address randomization"
 	depends on MMU && ARCH_SUPPORTS_EXPERIMENTAL_ASLR
 	help
 	  Enables the ability to map do a non 1:1 mapping for the user thread

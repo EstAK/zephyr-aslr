@@ -1251,16 +1251,15 @@ static int map_thread_stack(struct k_thread *thread,
 	return private_map(ptables, "thread_stack",
 
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-			(uintptr_t)thread->stack_obj,
-			(uintptr_t)thread->stack_info.va_addr,
+			(uintptr_t)thread->stack_obj, (uintptr_t)thread->stack_info.va_addr,
 
-            /* additional MMU_PAGE_SIZE as we map from the stack_ptr
-             * instead of stack_info.start
-             */
+			/*
+			 * additional MMU_PAGE_SIZE as we map from the stack_ptr
+			 * instead of stack_info.start
+			 */
 			CONFIG_MMU_PAGE_SIZE +
 #else
-			(uintptr_t)thread->stack_info.start,
-			(uintptr_t)thread->stack_info.start,
+			(uintptr_t)thread->stack_info.start, (uintptr_t)thread->stack_info.start,
 #endif
 			thread->stack_info.size,
 			MT_P_RW_U_RW | MT_NORMAL);

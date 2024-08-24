@@ -176,7 +176,7 @@ struct _thread_stack_info {
 	 * randomly mapped to a virtual address. Currently only works on
 	 * ARM64
 	 *
-	 *            	        phys        the kernel        virt
+	 *                     phys        the kernel        virt
 	 *                  address space   randomly     address space
 	 *                +---------------+ chooses a  +---------------+
 	 *                |               | va         |               |
