@@ -19,6 +19,7 @@ config MULTITHREADING
 	  since the main thread cannot pend, it being the only thread in the
 	  system.
 
+		invalidate_tlb_all();
 	  Many drivers and subsystems will not work with this option
 	  set to 'n'; disable only when you REALLY know what you are
 	  doing.
@@ -204,7 +205,7 @@ config THREAD_STACK_MEM_MAPPED
 
 config EXPERIMENTAL_ASLR
 	bool "Thread stack address randomization"
-	depends on MMU && ARCH_SUPPORTS_EXPERIMENTAL_ASLR
+	depends on MMU && ARCH_SUPPORTS_EXPERIMENTAL_ASLR && (ENTROPY_GENERATOR || TEST_RANDOM_GENERATOR)
 	help
 	  Enables the ability to map do a non 1:1 mapping for the user thread
 	  stack. The kernel will randomly choose an address that "should" not
@@ -218,6 +219,12 @@ config EXPERIMENTAL_ASLR_LOWER_BOUND_VA_ADDRESS
 	  This value should never be lower than the .text section as to not
 	  overwrite it in a user thread table when mapping PA to VA
 
+config BENCHMARKING
+	bool "Benchmarking performances"
+	default 0
+	help
+	  This config is solely used for bechmarking purposes, it does
+	  not bring any sort of performances
 
 config THREAD_ABORT_HOOK
 	bool

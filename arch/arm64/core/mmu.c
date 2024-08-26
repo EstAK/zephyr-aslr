@@ -766,6 +766,28 @@ struct arm_mmu_flat_range {
 
 static const struct arm_mmu_flat_range mmu_zephyr_ranges[] = {
 
+#ifdef CONFIG_BENCHARMKING
+	/* Mark the zephyr execution regions (data, bss, noinit, etc.)
+	 * cacheable, read-write
+	 * Note: read-write region is marked execute-never internally
+	 */
+	{ .name  = "zephyr_data",
+	  .start = _image_ram_start,
+	  .end   = _image_ram_end,
+	  .attrs = MT_NORMAL_NC | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
+
+	/* Mark text segment cacheable,read only and executable */
+	{ .name  = "zephyr_code",
+	  .start = __text_region_start,
+	  .end   = __text_region_end,
+	  .attrs = MT_NORMAL_NC | MT_P_RX_U_RX | MT_DEFAULT_SECURE_STATE },
+
+	/* Mark rodata segment cacheable, read only and execute-never */
+	{ .name  = "zephyr_rodata",
+	  .start = __rodata_region_start,
+	  .end   = __rodata_region_end,
+	  .attrs = MT_NORMAL_NC | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
+#else
 	/* Mark the zephyr execution regions (data, bss, noinit, etc.)
 	 * cacheable, read-write
 	 * Note: read-write region is marked execute-never internally
@@ -786,6 +808,7 @@ static const struct arm_mmu_flat_range mmu_zephyr_ranges[] = {
 	  .start = __rodata_region_start,
 	  .end   = __rodata_region_end,
 	  .attrs = MT_NORMAL | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
+#endif
 
 #ifdef CONFIG_NOCACHE_MEMORY
 	/* Mark nocache segment noncachable, read-write and execute-never */
@@ -1334,9 +1357,13 @@ static void z_arm64_swap_ptables(struct k_thread *incoming)
 	MMU_DEBUG("TTBR0 switch from %#llx to %#llx\n", curr_ttbr0, new_ttbr0);
 	z_arm64_set_ttbr0(new_ttbr0);
 
+#ifdef CONFIG_BENCHMARKING
+	invalidate_tlb_all();
+#else
 	if (get_asid(curr_ttbr0) == get_asid(new_ttbr0)) {
 		invalidate_tlb_all();
 	}
+#endif
 }
 
 void z_arm64_thread_mem_domains_init(struct k_thread *incoming)
