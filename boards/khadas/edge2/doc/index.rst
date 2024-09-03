@@ -1,0 +1,84 @@
+.. _khadas_edge2:
+
+Khadas Edge2
+#################################
+
+Overview
+********
+
+See <https://www.khadas.com/edge2>
+
+Hardware
+********
+
+See <https://docs.khadas.com/products/sbc/edge2/hardware/start>
+
+Supported Features
+==================
+
+Khadas Edge2 board default configuration supports the following
+hardware features:
+
++-----------+------------+--------------------------------------+
+| Interface | Controller | Driver/Component                     |
++===========+============+======================================+
+| GIC-600   | on-chip    | GICv3 interrupt controller           |
++-----------+------------+--------------------------------------+
+| ARM TIMER | on-chip    | System Clock                         |
++-----------+------------+--------------------------------------+
+| UART      | on-chip    | Synopsys DesignWare 8250 serial port |
++-----------+------------+--------------------------------------+
+
+Other hardware features have not been enabled yet for this board.
+
+The default configuration can be found in (NON-SMP)
+:zephyr_file:`boards/khadas/edge2/khadas_edge2_defconfig`
+
+There are multiple serial ports on the board: Zephyr is using
+uart2 as serial console.
+
+Programming and Debugging
+*************************
+
+Use the following configuration to run basic Zephyr applications and
+kernel tests on Khadas Edge2 board. For example, with the :ref:`hello_world`:
+
+1. Non-SMP mode
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/hello_world
+   :host-os: unix
+   :board: khadas_edge2
+   :goals: build
+
+This will build an image with the synchronization sample app.
+
+Build the zephyr image:
+
+.. code-block:: console
+
+	mkimage -C none -A arm64 -O linux -a 0x10000000 -e 0x10000000 -d build/zephyr/zephyr.bin build/zephyr/zephyr.img
+
+Use u-boot to load and kick Zephyr.bin to CPU Core0:
+
+.. code-block:: console
+
+	tftpboot ${pxefile_addr_r} zephyr.img; bootm start ${pxefile_addr_r}; bootm loados; bootm go
+
+It will display the following console output:
+
+.. code-block:: console
+
+	*** Booting Zephyr OS build XXXXXXXXXXXX  ***
+	Hello World! khadas_edge2
+
+Flashing
+========
+
+Zephyr image can be loaded in DDR memory at address 0x10000000 from SD Card,
+EMMC, QSPI Flash or downloaded from network in uboot.
+
+References
+==========
+
+`Documentation: <https://docs.khadas.com/linux/edge/>`_
