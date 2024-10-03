@@ -793,6 +793,11 @@ static const struct arm_mmu_flat_range mmu_zephyr_ranges[] = {
 	  .end   = _nocache_ram_end,
 	  .attrs = MT_NORMAL_NC | MT_P_RW_U_RW | MT_DEFAULT_SECURE_STATE },
 #endif
+
+	{ .name  = "",
+	  .start = (void*)UINT32_C(0xfeb50000),
+	  .end   = (void*)UINT32_C(0xfeb51000),
+	  .attrs = K_MEM_ARM_DEVICE_nGnRnE | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
 };
 
 static inline void add_arm_mmu_flat_range(struct arm_mmu_ptables *ptables,

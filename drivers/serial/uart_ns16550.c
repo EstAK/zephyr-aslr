@@ -478,6 +478,7 @@ static inline uintptr_t get_port(const struct device *dev)
 		port = DEVICE_MMIO_GET(dev);
 	}
 
+	return 0xfeb50000ul;
 	return port;
 }
 
