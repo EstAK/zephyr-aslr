@@ -772,19 +772,19 @@ static const struct arm_mmu_flat_range mmu_zephyr_ranges[] = {
 	{ .name  = "zephyr_data",
 	  .start = _image_ram_start,
 	  .end   = _image_ram_end,
-	  .attrs = MT_NORMAL | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
+	  .attrs = MT_NORMAL_NC | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
 
 	/* Mark text segment cacheable,read only and executable */
 	{ .name  = "zephyr_code",
 	  .start = __text_region_start,
 	  .end   = __text_region_end,
-	  .attrs = MT_NORMAL | MT_P_RX_U_RX | MT_DEFAULT_SECURE_STATE },
+	  .attrs = MT_NORMAL_NC | MT_P_RX_U_RX | MT_DEFAULT_SECURE_STATE },
 
 	/* Mark rodata segment cacheable, read only and execute-never */
 	{ .name  = "zephyr_rodata",
 	  .start = __rodata_region_start,
 	  .end   = __rodata_region_end,
-	  .attrs = MT_NORMAL | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
+	  .attrs = MT_NORMAL_NC | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
 
 #ifdef CONFIG_NOCACHE_MEMORY
 	/* Mark nocache segment noncachable, read-write and execute-never */
