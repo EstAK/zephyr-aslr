@@ -1,0 +1,3 @@
+[submodule "extras/rkdeveloptool"]
+	path = extras/rkdeveloptool
+	url = https://github.com/rockchip-linux/rkdeveloptool.git
