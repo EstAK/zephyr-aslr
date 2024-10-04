@@ -6,16 +6,16 @@
 
 #include <stdio.h>
 #include <zephyr/kernel.h>
-#include <zephyr/timing/timing.h>
+/*#include <zephyr/timing/timing.h>*/
 
 #define RUNS 5
 
 #define USER_STACKSIZE  4096
 #define HEAP_SIZE       4108864
 
-K_HEAP_DEFINE_NOCACHE(heap, HEAP_SIZE)
+K_HEAP_DEFINE_NOCACHE(heap, HEAP_SIZE);
 
-static void seq_read(uint8_t* array, uint64_t size)
+static inline void seq_read(uint8_t* array, uint64_t size)
 {
     volatile uint64_t acc = 0;
     for (uint64_t i = 0; i < size; i++) {
@@ -25,7 +25,7 @@ static void seq_read(uint8_t* array, uint64_t size)
 
 static void benchmark()
 {
-    timing_t start_time, end_time;
+    uint64_t start_time, end_time;
     uint64_t total_cycles = 0;
     uint64_t total_ns = 0;
     uint64_t size;
@@ -46,13 +46,13 @@ static void benchmark()
         }
 
         for (unsigned int j = 0; j < RUNS; j++) {
-            start_time = timing_counter_get();
+
+            start_time = k_cycle_get_64();
             seq_read(array, size);
+            end_time = k_cycle_get_64();
 
-            end_time = timing_counter_get();
-
-            total_cycles = timing_cycles_get(&start_time, &end_time);
-            total_ns = timing_cycles_to_ns(total_cycles);
+            total_cycles = end_time - start_time;
+            total_ns = SYS_CLOCK_HW_CYCLES_TO_NS_AVG(total_cycles, 1);
 
             printf("%" PRIu64 ",%lld\n", size * 8, total_ns);
         }
@@ -63,12 +63,6 @@ static void benchmark()
 int main(void)
 {
     printf("hello world\n");
-    timing_init();
-    timing_start();
-
     benchmark();
-
-    timing_stop();
-
     return 0;
 }
