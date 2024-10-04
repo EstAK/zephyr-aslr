@@ -11,7 +11,7 @@
 #define RUNS 5
 #define PRIORITY 5
 #define USER_STACKSIZE 4096
-#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE*2
+#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE*1938
 
 /* the start address of the MPU region needs to align with its size */
 uint8_t __aligned(CONFIG_MMU_PAGE_SIZE) user_heap_mem[HEAP_SIZE];
@@ -36,9 +36,7 @@ static void seq_read(uint8_t *array, uint64_t size)
 
 static void benchmark(void *p1, void *p2, void *p3)
 {
-	printf("before initializing the sys heap\n");
 	sys_heap_init(&user_heap, &user_heap_mem[0], HEAP_SIZE);
-	printf("after initializing the sys heap\n");
 
 	uint64_t start_time, end_time;
 	uint64_t total_cycles = 0;
@@ -46,13 +44,11 @@ static void benchmark(void *p1, void *p2, void *p3)
 	uint64_t size;
 	uint8_t *array;
 
+	printf("i,size, time\n");
 	for (uint64_t i = 10; i < 50; i++) {
-		printf("---->running test with i -> %" PRIu64 "\n", i);
 		size = UINT64_C(1) << i;
 
-		printf("before the alloc with size = %" PRIu64 "\n", size);
 		array = (uint8_t *)sys_heap_alloc(&user_heap, sizeof(uint8_t) * size);
-		printf("good alloc\n");
 		if (array == NULL) {
 			printf("alloc error\n");
 			return;
@@ -70,7 +66,7 @@ static void benchmark(void *p1, void *p2, void *p3)
 			total_cycles = end_time - start_time;
 			total_ns = SYS_CLOCK_HW_CYCLES_TO_NS_AVG(total_cycles, 1);
 
-			printf("%" PRIu64 ",%lld\n", size * 8, total_ns);
+			printf("%lld,%" PRIu64 ",%lld\n", i, size * 8, total_ns);
 		}
 		sys_heap_free(&user_heap, array);
 	}
@@ -82,6 +78,11 @@ K_THREAD_DEFINE(user_thread, USER_STACKSIZE,
 
 int main(void)
 {
+#ifdef CONFIG_BENCHMARKING
+	printf("no caches\n");
+#else
+	printf("caches\n");
+#endif
 	k_mem_domain_init(&user_domain, 1, user_partitions);
 	k_mem_domain_add_thread(&user_domain, user_thread);
 	k_thread_start(user_thread);
