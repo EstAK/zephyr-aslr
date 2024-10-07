@@ -14,7 +14,7 @@
 #define USER_STACKSIZE 4096
 
 /*#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE*1938*/
-#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE
+#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE * 100
 
 /* the start address of the MPU region needs to align with its size */
 uint8_t __aligned(CONFIG_MMU_PAGE_SIZE) user1_heap_mem[HEAP_SIZE];
@@ -102,6 +102,12 @@ K_THREAD_DEFINE(user2_thread, USER_STACKSIZE,
 
 int main(void)
 {
+
+#ifdef CONFIG_EXPERIMENTAL_ASLR
+	printf("ASLR enabled\n");
+#else
+	printf("ASLR disabled\n");
+#endif
 
 #ifdef CONFIG_BENCHMARKING
 	printf("no caches\n");
