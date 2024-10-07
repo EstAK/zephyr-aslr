@@ -39,6 +39,8 @@ class Entry:
             splitted: List[str] = list()
             self.aslr = f.readline().startswith("ASLR enabled")
             for line in f.readlines()[1:]:
+                temp = list()
+                splitted = list()
                 splitted = line.split(" ")
                 temp.append(splitted.pop(0))
                 temp.append(splitted.pop(-1).removesuffix("\n"))
@@ -48,10 +50,8 @@ class Entry:
                     case "yields at" | "is back" :
                         if first_yield:
                             first_yield = False
-                            pass
+                            continue
                         res.append(temp)
-                temp = list()
-                splitted = list()
         return res
 
 def read_file(filename: str) -> None:
