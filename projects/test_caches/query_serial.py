@@ -28,7 +28,7 @@ def do_read(serial: serial.Serial, timeout) -> str:
 def write_csv(res) -> None:
     with open(f"{"caches" if caches else "nocaches"}-{time.time()}.csv", "w") as f:
         f.write("size, time(cycles)\n")
-        for elem in [",".join(x.split(",")[1::]) for x in res]:
+        for elem in res:
             f.write(f"{elem}\n")
 
 
