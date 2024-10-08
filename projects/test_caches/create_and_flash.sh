@@ -7,8 +7,7 @@ EMMC_LOAD=0x100000
 SPL=/home/esteban/Documents/paris/khadas/fenix/build/u-boot/rk3588_spl_loader_v1.17.113.bin
 
 function make_image () {
-	rm -rf build
-	west build -b khadas_edge2
+	west build -b khadas_edge2 --pristine
 	if [ $? -eq 1 ] ; then
 		exit 1
 	fi
@@ -24,18 +23,35 @@ function flash_image () {
 	rkdeveloptool rd
 }
 
+function swap_config () {
+    mv prj.conf temp
+    mv other prj.conf
+    mv temp other
+}
+
+if [ ! -e "other" ]; then
+    cp prj.conf other
+    param=$(cat other | rg CONFIG_BENCHMARKING | tail -c 2)
+    case $param in
+        y*)
+            sed -i -e 's/CONFIG_BENCHMARKING=y/CONFIG_BENCHMARKING=n/g' other;;
+        n* )
+            sed -i -e 's/CONFIG_BENCHMARKING=n/CONFIG_BENCHMARKING=y/g' other;;
+        esac
+fi
+
 if [$SPL = "SPL_LOCATION"] ; then
 	echo "Please set the location of your SPL in the script"
 fi
 
 make_image
 
-while : ; do 
+while : ; do
 	rkdeveloptool ld 2>& 1 > /dev/null
 	if [ $? -eq 1 ] ; then
 		echo "Ensure that the device is in maskrom mode"
 		read  -n 1 -p "Press any key to resume" _
-	else 
+	else
 		break
 	fi
 done
@@ -43,14 +59,24 @@ done
 prepare_board
 flash_image
 
-if [ $XDG_SESSION_TYPE = "wayland" ] ; then
-	wl-copy "mmc read \$pxefile_addr_r 0x100000 0x11b
-	bootm start pxefile_addr_r
-	bootm loados
-	bootm go"
-else
-	xclip -i "mmc read \$pxefile_addr_r 0x100000 0x11b
-	bootm start pxefile_addr_r
-	bootm loados
-	bootm go"
-fi
+sleep 5s
+python query_serial.py
+
+swap_config
+make_image
+
+while : ; do
+	rkdeveloptool ld 2>& 1 > /dev/null
+	if [ $? -eq 1 ] ; then
+		echo "Ensure that the device is in maskrom mode"
+		read  -n 1 -p "Press any key to resume" _
+	else
+		break
+	fi
+done
+
+prepare_board
+flash_image
+
+sleep 5s
+python query_serial.py
