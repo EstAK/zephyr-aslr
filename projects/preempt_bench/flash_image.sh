@@ -65,21 +65,3 @@ prepare_board
 flash_image
 
 fill_clipboard
-
-swap_config
-make_image
-
-while : ; do
-	rkdeveloptool ld 2>& 1 > /dev/null
-	if [ $? -eq 1 ] ; then
-		echo "Ensure that the device is in maskrom mode"
-		read  -n 1 -p "Press any key to resume" _
-	else
-		break
-	fi
-done
-
-prepare_board
-flash_image
-
-fill_clipboard
