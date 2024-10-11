@@ -9,11 +9,11 @@
 #include <zephyr/random/random.h>
 #include <zephyr/sys/sys_heap.h>
 
-#define RUNS 5
+#define RUNS 100
 #define PRIORITY 5
 
 #define USER_STACKSIZE 16384
-#define SIZE 5
+#define SIZE 30
 
 unsigned int dfs(uint64_t graph[SIZE][SIZE], uint64_t source, uint64_t destination)
 {
@@ -50,8 +50,10 @@ void populate_graph(uint64_t graph[SIZE][SIZE])
             continue;
         }
 
-        while (visited[pair] != 1) {
-            pair = sys_rand64_get() % SIZE;
+        pair = sys_rand64_get() % SIZE; 
+        while (pair == i || visited[pair] != 1) {
+            pair++;
+            pair %= SIZE;
         }
 
         // undirected graph
@@ -64,58 +66,62 @@ void populate_graph(uint64_t graph[SIZE][SIZE])
 
 static void benchmark(void* user_heap_mem, void* user_heap, void* p3)
 {
-    // DFS
-
     uint64_t start_time, end_time;
     uint64_t total_cycles = 0;
     unsigned int g[SIZE][SIZE];
-    // populate_graph(&g);
 
-    while (1) {
-        start_time = k_cycle_get_64();
-        end_time = k_cycle_get_64();
+    for (uint64_t i = 0; i < RUNS; i ++) {
+        dfs(g, sys_rand64_get() % SIZE, sys_rand64_get() % SIZE);
 
-        total_cycles = end_time - start_time;
-
-        printf("%s yields at %" PRIu64 "\n", _current->name, k_cycle_get_64());
+        printf("%"PRIu64"\n", k_cycle_get_64());
         k_thread_priority_set(_current, k_thread_priority_get(_current));
-        printf("%s is back %" PRIu64 "\n", _current->name, k_cycle_get_64());
+        printf("%"PRIu64"\n", k_cycle_get_64());
     }
 }
 
-/*K_THREAD_DEFINE(user1_thread, USER_STACKSIZE,*/
-/*                benchmark, NULL, NULL, NULL,*/
-/**/
-/*                PRIORITY, 0, 0);*/
-/**/
-/*K_THREAD_DEFINE(user2_thread, USER_STACKSIZE,*/
-/*                benchmark, NULL, NULL, NULL,*/
-/*                PRIORITY, 0, 0);*/
-/**/
+static void benchmark2(void* user_heap_mem, void* user_heap, void* p3)
+{
+    uint64_t start_time, end_time;
+    uint64_t total_cycles = 0;
+    unsigned int g[SIZE][SIZE];
+
+    for (uint64_t i = 0; i < RUNS; i ++) {
+        dfs(g, sys_rand64_get() % SIZE, sys_rand64_get() % SIZE);
+
+        printf("%"PRIu64"\n", k_cycle_get_64());
+        k_thread_priority_set(_current, k_thread_priority_get(_current));
+        printf("%"PRIu64"\n", k_cycle_get_64());
+    }
+}
+
+K_THREAD_DEFINE(user1_thread, USER_STACKSIZE,
+                benchmark, NULL, NULL, NULL,
+
+                PRIORITY, 0, 0);
+
+K_THREAD_DEFINE(user2_thread, USER_STACKSIZE,
+                benchmark2, NULL, NULL, NULL,
+                PRIORITY, 0, 0);
+
 int main(void)
 {
 
+    printf("===START===\n");
 #ifdef CONFIG_EXPERIMENTAL_ASLR
-    printf("ASLR enabled\n");
+    printf("y\n");
 #else
-    printf("ASLR disabled\n");
+    printf("n\n");
 #endif
 
-#ifdef CONFIG_BENCHMARKING
-    printf("no caches\n");
-#else
-    printf("caches\n");
-#endif
-    uint64_t g[SIZE][SIZE] = { 0 };
-    populate_graph(g);
-    for (uint64_t i = 0; i < SIZE; i++) {
-        for (uint64_t j = 0; j < SIZE; j++) {
-            printf("%" PRIu64 " ", g[i][j]);
-        }
-        printf("\n");
-    }
-    printf("%d\n", dfs(g, 0, 1));
-    /*k_thread_start(user1_thread);*/
-    /*k_thread_start(user2_thread);*/
+/*#ifdef CONFIG_BENCHMARKING*/
+/*    printf("n\n");*/
+/*#else*/
+/*    printf("y\n");*/
+/*#endif*/
+    k_thread_start(user1_thread);
+    k_thread_start(user2_thread);
+
+    k_thread_join(user1_thread,K_FOREVER);
+    k_thread_join(user2_thread, K_FOREVER);
     return 0;
 }

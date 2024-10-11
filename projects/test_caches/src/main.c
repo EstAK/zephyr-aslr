@@ -3,10 +3,12 @@
 #include <zephyr/cache.h>
 #include <stdio.h>
 
-#define RUNS 5
+#define MAX_RUNS 50
+#define RUNS 10
+#define OFFSET 10
 #define PRIORITY 5
 #define USER_STACKSIZE 4096
-#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE*100
+#define HEAP_SIZE CONFIG_MMU_PAGE_SIZE*200
 
 /* the start address of the MPU region needs to align with its size */
 uint64_t __aligned(CONFIG_MMU_PAGE_SIZE) user_heap_mem[HEAP_SIZE];
@@ -65,26 +67,30 @@ static void benchmark(void *p1, void *p2, void *p3)
 	uint64_t size;
 	uint64_t *array;
 
-    uint64_t res[RUNS * 50];
+    uint64_t res[RUNS * MAX_RUNS];
     size_t index = 0;
 
-	for (uint64_t i = 10; i < 50; i++) {
+	for (uint64_t i = OFFSET; i < MAX_RUNS; i++) {
 		size = UINT64_C(1) << i;
 
 		array = (uint64_t *)sys_heap_alloc(&user_heap, sizeof(uint64_t) * size);
 		if (array == NULL) {
-            for (int j = 0; j < (i - 10) * RUNS ; j ++ ) {
-                printf("%"PRIu64",%"PRIu64"\n", j * sizeof(uint64_t), res[j]);
+            uint64_t temp = OFFSET;
+            for (int j = 0; j < (i - OFFSET) * RUNS ; j ++ ) {
+                if ( j > OFFSET && j % RUNS == 0 ) {
+                    temp ++;
+                }
+                printf("%"PRIu64",%"PRIu64"\n", (UINT64_C(1) << temp) * sizeof(uint64_t), res[j]);
             }
 			printf("===END===\n");
 			return;
 		}
 
-        make_cyclic_permutation(size, array);
-		sys_cache_data_flush_and_invd_all();
-		sys_cache_instr_flush_and_invd_all();
 		for (unsigned int j = 0; j < RUNS; j++) {
+            /*sys_cache_data_flush_and_invd_all();*/
+            /*sys_cache_instr_flush_and_invd_all();*/
 
+            make_cyclic_permutation(size, array);
 			start_time = k_cycle_get_64();
 			seq_read(array, size);
 			end_time = k_cycle_get_64();

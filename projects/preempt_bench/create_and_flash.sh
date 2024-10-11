@@ -6,29 +6,8 @@ LOAD_ADDR=0x10000000
 EMMC_LOAD=0x100000
 SPL=/home/esteban/Documents/paris/khadas/fenix/build/u-boot/rk3588_spl_loader_v1.17.113.bin
 
-function fill_clipboard() {
-    if [ $XDG_SESSION_TYPE = "wayland" ] ; then
-        wl-copy "mmc read \$pxefile_addr_r 0x100000 0x11b
-        bootm start \$pxefile_addr_r
-        bootm loados
-        bootm go"
-    else
-        xclip -i "mmc read \$pxefile_addr_r 0x100000 0x11b
-        bootm start \$pxefile_addr_r
-        bootm loados
-        bootm go"
-    fi
-}
-
-function swap_config () {
-    mv prj.conf temp
-    mv other prj.conf
-    mv temp other
-}
-
 function make_image () {
-	rm -rf build
-	west build -b khadas_edge2
+	west build -b khadas_edge2 --pristine
 	if [ $? -eq 1 ] ; then
 		exit 1
 	fi
@@ -44,9 +23,25 @@ function flash_image () {
 	rkdeveloptool rd
 }
 
+function swap_config () {
+    mv prj.conf temp
+    mv other prj.conf
+    mv temp other
+}
+
 if [ ! -e "other" ]; then
     cp prj.conf other
-    sed -i -e 's/CONFIG_EXPERIMENTAL_ASLR=n/CONFIG_EXPERIMENTAL_ASLR=y/g' other
+    param=$(cat other | rg CONFIG_EXPERIMENTAL_ASLR | tail -c 2)
+    case $param in
+        y*)
+            sed -i -e 's/CONFIG_EXPERIMENTAL_ASLR=y/CONFIG_EXPERIMENTAL_ASLR=n/g' other;;
+        n* )
+            sed -i -e 's/CONFIG_EXPERIMENTAL_ASLR=n/CONFIG_EXPERIMENTAL_ASLR=y/g' other;;
+        esac
+fi
+
+if [$SPL = "SPL_LOCATION"] ; then
+	echo "Please set the location of your SPL in the script"
 fi
 
 make_image
@@ -64,7 +59,8 @@ done
 prepare_board
 flash_image
 
-fill_clipboard
+sleep 5s
+python query_serial.py
 
 swap_config
 make_image
@@ -82,4 +78,5 @@ done
 prepare_board
 flash_image
 
-fill_clipboard
+sleep 5s
+python query_serial.py
