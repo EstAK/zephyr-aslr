@@ -763,47 +763,35 @@ struct arm_mmu_flat_range {
 	uint32_t attrs;
 };
 
+#ifdef CONFIG_BENCHMARKING
+//#define MEM_TYPE MT_DEVICE_GRE
+#define MEM_TYPE MT_NORMAL_NC
+#else
+#define MEM_TYPE MT_NORMAL
+#endif
+
 static const struct arm_mmu_flat_range mmu_zephyr_ranges[] = {
 
 	/* Mark the zephyr execution regions (data, bss, noinit, etc.)
 	 * cacheable, read-write
 	 * Note: read-write region is marked execute-never internally
 	 */
-#ifdef CONFIG_BENCHMARKING
 	{ .name  = "zephyr_data",
 	  .start = _image_ram_start,
 	  .end   = _image_ram_end,
-	  .attrs = MT_NORMAL_NC | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
+	  .attrs = MEM_TYPE | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
 
 	/* Mark text segment cacheable,read only and executable */
 	{ .name  = "zephyr_code",
 	  .start = __text_region_start,
 	  .end   = __text_region_end,
-	  .attrs = MT_NORMAL_NC | MT_P_RX_U_RX | MT_DEFAULT_SECURE_STATE },
+	  .attrs = MEM_TYPE | MT_P_RX_U_RX | MT_DEFAULT_SECURE_STATE },
 
 	/* Mark rodata segment cacheable, read only and execute-never */
 	{ .name  = "zephyr_rodata",
 	  .start = __rodata_region_start,
 	  .end   = __rodata_region_end,
-	  .attrs = MT_NORMAL_NC | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
-#else
-	{ .name  = "zephyr_data",
-	  .start = _image_ram_start,
-	  .end   = _image_ram_end,
-	  .attrs = MT_NORMAL | MT_P_RW_U_NA | MT_DEFAULT_SECURE_STATE },
-
-	/* Mark text segment cacheable,read only and executable */
-	{ .name  = "zephyr_code",
-	  .start = __text_region_start,
-	  .end   = __text_region_end,
-	  .attrs = MT_NORMAL | MT_P_RX_U_RX | MT_DEFAULT_SECURE_STATE },
-
-	/* Mark rodata segment cacheable, read only and execute-never */
-	{ .name  = "zephyr_rodata",
-	  .start = __rodata_region_start,
-	  .end   = __rodata_region_end,
-	  .attrs = MT_NORMAL | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
-#endif
+	  .attrs = MEM_TYPE | MT_P_RO_U_RO | MT_DEFAULT_SECURE_STATE },
 
 #ifdef CONFIG_NOCACHE_MEMORY
 	/* Mark nocache segment noncachable, read-write and execute-never */
@@ -961,7 +949,11 @@ static void enable_mmu_el1(struct arm_mmu_ptables *ptables, unsigned int flags)
 
 	/* Enable the MMU and data cache */
 	val = read_sctlr_el1();
+#ifdef CONFIG_BENCHMARKING
+	write_sctlr_el1(val | SCTLR_M_BIT);
+#else
 	write_sctlr_el1(val | SCTLR_M_BIT | SCTLR_C_BIT);
+#endif
 
 	/* Ensure the MMU enable takes effect immediately */
 	barrier_isync_fence_full();
@@ -1173,7 +1165,7 @@ size_t arch_virt_region_align(uintptr_t phys, size_t size)
 
 static uint16_t next_asid = 1;
 
-static uint16_t get_asid(uint64_t ttbr0)
+static inline uint16_t get_asid(uint64_t ttbr0)
 {
 	return ttbr0 >> TTBR_ASID_SHIFT;
 }
