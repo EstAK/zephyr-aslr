@@ -26,43 +26,42 @@ def do_read(serial: serial.Serial, timeout) -> str:
     return b''.join(buffer).decode('utf-8').removesuffix("\n").removesuffix("\r")
 
 def write_csv(res) -> None:
-    with open(f"{"alsr" if caches else "noaslr"}-{time.time()}.csv", "w") as f:
+    with open(f"{"caches" if caches else "nocaches"}-{"alsr" if aslr else "noaslr"}-{time.time()}.csv", "w") as f:
         f.write("time(cycles)\n")
-        print(res)
-        for i in range(1, len(res)):
-            if (i + 1) >= len(res): 
-                break
-            if i % 2 == 0:
-                f.write(f"{int(res[i + 1]) - int(res[i])}\n")
+        for i in range(1, len(res) - 2, 2):
+            f.write(f"{int(res[i + 1]) - int(res[i])}\n")
 
 
 if __name__ == "__main__":
-    started: bool = False
-    done: bool = False
     res: List[str] = list()
-    setup_done : bool = False
+    started: int = -1
+    idx: int = 0
 
     global caches
+    global aslr
     caches: bool = False
-    type: str = ""
+    aslr: bool = False
 
     ser = serial.Serial(PORT, baudrate=BAUDRATE)  # open serial port
     ser.write(CMD)     # write a string
-    idx: int = 0
-    while not done:
+
+    while True:
         line = do_read(ser, 1)
         print(line)
-        if started and not setup_done:
-            caches = line == "y"
-            setup_done = True
-        elif started :
+        if 0 <= started < 2:
+            if started == 0:
+                aslr = line == "y"          
+            else:
+                caches = line == "y"
+            started += 1
+        elif started >= 2:
             idx += 1
             res.append(line)
             if idx == 100:
                 break
             continue
         if line == "===START===":
-            started = True
+            started = 0
     print(f"has alsr : {caches}")
     write_csv(res)
 

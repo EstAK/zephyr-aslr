@@ -1,10 +1,18 @@
 #!/bin/bash
 
+RUNNER_SCRIPT=query_serial.py
 ZEPHYR_IMG=build/zephyr/zephyr.img
 ZEPHYR_BIN=build/zephyr/zephyr.bin
 LOAD_ADDR=0x10000000
 EMMC_LOAD=0x100000
 SPL=/home/esteban/Documents/paris/khadas/fenix/build/u-boot/rk3588_spl_loader_v1.17.113.bin
+CONTROL_CONFIG="CONFIG_USERSPACE=y
+CONFIG_TEST_RANDOM_GENERATOR=y
+CONFIG_THREAD_NAME=y
+CONFIG_BENCHMARKING=n
+CONFIG_EXPERIMENTAL_ASLR=n
+CONFIG_FPU=n"
+
 
 function make_image () {
 	west build -b khadas_edge2 --pristine
@@ -23,60 +31,40 @@ function flash_image () {
 	rkdeveloptool rd
 }
 
-function swap_config () {
-    mv prj.conf temp
-    mv other prj.conf
-    mv temp other
+function toggle_param () {
+	param=$(cat "prj.conf" | rg $1 | tail -c 2)
+	case $param in
+		y*)
+			sed -i -e "s/$1=y/$1=n/g" "prj.conf";;
+		n* )
+			sed -i -e "s/$1=n/$1=y/g" "prj.conf";;
+	esac
 }
 
-if [ ! -e "other" ]; then
-    cp prj.conf other
-    param=$(cat other | rg CONFIG_EXPERIMENTAL_ASLR | tail -c 2)
-    case $param in
-        y*)
-            sed -i -e 's/CONFIG_EXPERIMENTAL_ASLR=y/CONFIG_EXPERIMENTAL_ASLR=n/g' other;;
-        n* )
-            sed -i -e 's/CONFIG_EXPERIMENTAL_ASLR=n/CONFIG_EXPERIMENTAL_ASLR=y/g' other;;
-        esac
-fi
+function wait_for_maskrom() {
+	while : ; do
+		rkdeveloptool ld 2>& 1 > /dev/null
+		if [ $? -eq 1 ] ; then
+			echo "Ensure that the device is in maskrom mode"
+			read  -n 1 -p "Press any key to resume" _
+		else
+			break
+		fi
+	done
+}
 
-if [$SPL = "SPL_LOCATION"] ; then
-	echo "Please set the location of your SPL in the script"
-fi
+printf "%s\n" $CONTROL_CONFIG > prj.conf
 
-make_image
+for _ in {0..1}; do
+	for _ in {0..1}; do 
+		make_image
+		wait_for_maskrom
+		prepare_board
+		flash_image
+		sleep 5s
+		python $RUNNER_SCRIPT
 
-while : ; do
-	rkdeveloptool ld 2>& 1 > /dev/null
-	if [ $? -eq 1 ] ; then
-		echo "Ensure that the device is in maskrom mode"
-		read  -n 1 -p "Press any key to resume" _
-	else
-		break
-	fi
+		toggle_param "CONFIG_BENCHMARKING"	
+	done 
+	toggle_param "CONFIG_EXPERIMENTAL_ASLR"	
 done
-
-prepare_board
-flash_image
-
-sleep 5s
-python query_serial.py
-
-swap_config
-make_image
-
-while : ; do
-	rkdeveloptool ld 2>& 1 > /dev/null
-	if [ $? -eq 1 ] ; then
-		echo "Ensure that the device is in maskrom mode"
-		read  -n 1 -p "Press any key to resume" _
-	else
-		break
-	fi
-done
-
-prepare_board
-flash_image
-
-sleep 5s
-python query_serial.py
