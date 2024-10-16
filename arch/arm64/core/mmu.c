@@ -640,8 +640,13 @@ static uint64_t get_region_desc(uint32_t attrs)
 	unsigned int mem_type;
 	uint64_t desc = 0U;
 
+
 	/* NS bit for security memory access from secure state */
+#ifdef CONFIG_BENCHMARKING
+	desc |= PTE_BLOCK_DESC_NS;
+#else
 	desc |= (attrs & MT_NS) ? PTE_BLOCK_DESC_NS : 0;
+#endif
 
 	/*
 	 * AP bits for EL0 / ELh Data access permission
@@ -654,12 +659,22 @@ static uint64_t get_region_desc(uint32_t attrs)
 	 *     11      RO   RO
 	 */
 
+
 	/* AP bits for Data access permission */
+#ifdef CONFIG_BENCHMARKING
+	desc |= PTE_BLOCK_DESC_AP_RW;
+#else
 	desc |= (attrs & MT_RW) ? PTE_BLOCK_DESC_AP_RW : PTE_BLOCK_DESC_AP_RO;
+#endif
 
 	/* Mirror permissions to EL0 */
+#ifdef CONFIG_BENCHMARKING
+	// changing this to PTE_BLOCK_DESC_AP_ELx makes the program crash
+	desc |=  PTE_BLOCK_DESC_AP_EL_HIGHER;
+#else
 	desc |= (attrs & MT_RW_AP_ELx) ?
 		 PTE_BLOCK_DESC_AP_ELx : PTE_BLOCK_DESC_AP_EL_HIGHER;
+#endif
 
 	/* the access flag */
 	desc |= PTE_BLOCK_DESC_AF;
@@ -678,13 +693,16 @@ static uint64_t get_region_desc(uint32_t attrs)
 		 * it is not strictly needed to set shareability field
 		 */
 		desc |= PTE_BLOCK_DESC_OUTER_SHARE;
+#ifdef CONFIG_BENCHMARKING
+#else
 		/* Map device memory as execute-never */
 		desc |= PTE_BLOCK_DESC_PXN;
+#endif
 		desc |= PTE_BLOCK_DESC_UXN;
 		break;
 	case MT_NORMAL_NC:
 	case MT_NORMAL:
-		/* Make Normal RW memory as execute never */
+		 /*Make Normal RW memory as execute never*/
 		if ((attrs & MT_RW) || (attrs & MT_P_EXECUTE_NEVER))
 			desc |= PTE_BLOCK_DESC_PXN;
 
@@ -700,6 +718,7 @@ static uint64_t get_region_desc(uint32_t attrs)
 
 	/* non-Global bit */
 	if (attrs & MT_NG) {
+		early_puts("non global bit\n");
 		desc |= PTE_BLOCK_DESC_NG;
 	}
 
@@ -764,8 +783,9 @@ struct arm_mmu_flat_range {
 };
 
 #ifdef CONFIG_BENCHMARKING
-//#define MEM_TYPE MT_DEVICE_GRE
-#define MEM_TYPE MT_NORMAL_NC
+/*#define MEM_TYPE MT_RW | MT_RW_AP_ELx | MT_SECURE | MT_P_EXECUTE | MT_U_EXECUTE | MT_NO_OVERWRITE | MT_NG*/
+#define MEM_TYPE MT_DEVICE_nGnRnE
+/*#define MEM_TYPE MT_NORMAL*/
 #else
 #define MEM_TYPE MT_NORMAL
 #endif
@@ -854,6 +874,7 @@ static void setup_page_tables(struct arm_mmu_ptables *ptables)
 	const struct arm_mmu_region *region;
 	uintptr_t max_va = 0, max_pa = 0;
 
+	early_puts("setup new page table\n");
 	MMU_DEBUG("xlat tables:\n");
 	for (index = 0U; index < CONFIG_MAX_XLAT_TABLES; index++)
 		MMU_DEBUG("%d: %p\n", index, xlat_tables + index * Ln_XLAT_NUM_ENTRIES);
@@ -872,6 +893,9 @@ static void setup_page_tables(struct arm_mmu_ptables *ptables)
 	/* setup translation table for zephyr execution regions */
 	for (index = 0U; index < ARRAY_SIZE(mmu_zephyr_ranges); index++) {
 		range = &mmu_zephyr_ranges[index];
+		char test[20];
+		sprintf(test, "%d\n", index);
+		early_puts(test);
 		add_arm_mmu_flat_range(ptables, range, 0);
 	}
 
@@ -948,15 +972,20 @@ static void enable_mmu_el1(struct arm_mmu_ptables *ptables, unsigned int flags)
 	barrier_isync_fence_full();
 
 	/* Enable the MMU and data cache */
+	early_puts("before reading the sctlr el1\n");
 	val = read_sctlr_el1();
-#ifdef CONFIG_BENCHMARKING
-	write_sctlr_el1(val | SCTLR_M_BIT);
-#else
+	early_puts("before setting the sctlr el1\n");
+/*#ifdef CONFIG_BENCHMARKING*/
+/*	__asm__ volatile ("msr sctlr_el1, %0"*/
+/*			  :: "r" (val | SCTLR_M_BIT) : "memory");*/
+/*#else*/
 	write_sctlr_el1(val | SCTLR_M_BIT | SCTLR_C_BIT);
-#endif
+/*#endif*/
+	early_puts("after setting the sctlr el1\n");
 
 	/* Ensure the MMU enable takes effect immediately */
 	barrier_isync_fence_full();
+	early_puts("ensuring that the MMU is enabled\n");
 
 	MMU_DEBUG("MMU enabled with dcache\n");
 }
@@ -986,6 +1015,7 @@ void z_arm64_mm_init(bool is_primary_core)
 
 	/* Ensure that MMU is already not enabled */
 	__ASSERT((read_sctlr_el1() & SCTLR_M_BIT) == 0, "MMU is already enabled\n");
+	early_puts("A\n");
 
 	/*
 	 * Only booting core setup up the page tables.
@@ -994,9 +1024,11 @@ void z_arm64_mm_init(bool is_primary_core)
 		kernel_ptables.base_xlat_table = new_table();
 		setup_page_tables(&kernel_ptables);
 	}
+	early_puts("B\n");
 
 	/* currently only EL1 is supported */
 	enable_mmu_el1(&kernel_ptables, flags);
+	early_puts("back from enabling the mmu el1\n");
 }
 
 static void sync_domains(uintptr_t virt, size_t size, const char *name)
@@ -1348,7 +1380,7 @@ static void z_arm64_swap_ptables(struct k_thread *incoming)
 	MMU_DEBUG("TTBR0 switch from %#llx to %#llx\n", curr_ttbr0, new_ttbr0);
 	z_arm64_set_ttbr0(new_ttbr0);
 
-#ifdef CONFIG_BENCHMARKING
+#if CONFIG_BENCHMARKING
 	invalidate_tlb_all();
 #else
 	if (get_asid(curr_ttbr0) == get_asid(new_ttbr0)) {

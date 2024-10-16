@@ -478,9 +478,14 @@ static inline uintptr_t get_port(const struct device *dev)
 		port = DEVICE_MMIO_GET(dev);
 	}
 
-	return 0xfeb50000ul;
+	//return 0xfeb50000ul;
 	return port;
 }
+
+extern const struct device *const uart_console_dev;
+static int UART_CFGD = 0;
+static void uart_ns16550_poll_out(const struct device *dev,
+					   unsigned char c);
 
 static uint32_t get_uart_baudrate_divisor(const struct device *dev,
 					  uint32_t baud_rate,
@@ -493,6 +498,63 @@ static uint32_t get_uart_baudrate_divisor(const struct device *dev,
 	 */
 	return ((pclk + (baud_rate << 3)) / baud_rate) >> 4;
 }
+
+void xxx_uart()
+{
+	volatile uint32_t *OUT = (uint32_t *) get_port(uart_console_dev);
+	printk("UART mapped at %#lx\n", (uintptr_t)OUT);
+	for (size_t i=0; i<6; i++) {
+		printk("UART reg %#02lx is :%#02x\n", 4*i, OUT[i]);
+	}
+}
+
+void early_putc(char c)
+{
+	if (UART_CFGD) {
+		//uart_ns16550_poll_out(uart_console_dev, c);
+		//return;
+	}
+
+	volatile uint32_t *OUT = (volatile uint32_t *)UINT32_C(0xfeb50000);
+	volatile uint32_t dummy;
+
+	static int inited = 1;
+	if (!inited) {
+		OUT[2] = 0b111;
+		dummy = OUT[2];
+		dummy = OUT[0];
+		OUT[1] = 0;
+		inited = 1;
+	}
+
+	k_busy_wait(100);
+	while ((OUT[5] & LSR_THRE) == 0) {}
+	*OUT = c;
+}
+
+void early_puts(const char* s)
+{
+	while (*s != '\0') {
+		if (*s == '\n') {
+			early_putc('\r');
+		}
+		early_putc(*s);
+		s++;
+	}
+}
+
+void early_putx(uint32_t x) {
+	char buf[20];
+	sprintf(buf, "%#x\n", x);
+	early_puts(buf);
+}
+
+void early_putllu(uint64_t x) {
+	char buf[20];
+	sprintf(buf, "% "PRIu64"\n", x);
+	early_puts(buf);
+}
+
 
 #ifdef CONFIG_UART_NS16550_ITE_HIGH_SPEED_BAUDRATE
 static uint32_t get_ite_uart_baudrate_divisor(const struct device *dev,

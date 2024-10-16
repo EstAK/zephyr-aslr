@@ -33,14 +33,19 @@ void z_prep_c(void)
 	/* Initialize tpidrro_el0 with our struct _cpu instance address */
 	write_tpidrro_el0((uintptr_t)&_kernel.cpus[0]);
 
+	/*early_puts("z_prep_c--A\n");*/
 	z_bss_zero();
+	/*early_puts("z_prep_c--B\n");*/
 	z_data_copy();
+	/*early_puts("z_prep_c--C\n");*/
 #ifdef CONFIG_ARM64_SAFE_EXCEPTION_STACK
 	/* After bss clean, _kernel.cpus is in bss section */
 	z_arm64_safe_exception_stack_init();
 #endif
 	z_arm64_mm_init(true);
+	early_puts("z_prep_c--D\n");
 	z_arm64_interrupt_init();
+	early_puts("z_prep_c--E\n");
 
 	z_cstart();
 	CODE_UNREACHABLE;

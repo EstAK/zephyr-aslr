@@ -526,11 +526,14 @@ char *z_setup_new_thread(struct k_thread *new_thread,
 {
 	char *stack_ptr;
 
+	early_puts("z_setup_new_thread -- A\n");
 	Z_ASSERT_VALID_PRIO(prio, entry);
+	early_puts("z_setup_new_thread -- B\n");
 
 #ifdef CONFIG_THREAD_ABORT_NEED_CLEANUP
 	k_thread_abort_cleanup_check_reuse(new_thread);
 #endif /* CONFIG_THREAD_ABORT_NEED_CLEANUP */
+	early_puts("z_setup_new_thread -- B\n");
 
 #ifdef CONFIG_OBJ_CORE_THREAD
 	k_obj_core_init_and_link(K_OBJ_CORE(new_thread), &obj_type_thread);

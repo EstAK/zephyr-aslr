@@ -16,7 +16,7 @@ See <https://docs.khadas.com/products/sbc/edge2/hardware/start>
 Supported Features
 ==================
 
-Khadas Edge2 board default configuration supports the following
+`khadas_edge2` board default configuration supports the following
 hardware features:
 
 +-----------+------------+--------------------------------------+

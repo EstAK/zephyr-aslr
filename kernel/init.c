@@ -224,31 +224,39 @@ void z_bss_zero(void)
 		return;
 	}
 
+	/*early_puts("---A\n");*/
 	z_early_memset(__bss_start, 0, __bss_end - __bss_start);
+	/*early_puts("---B\n");*/
 #if DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_ccm), okay)
+	/*early_puts("---C\n");*/
 	z_early_memset(&__ccm_bss_start, 0,
 		       (uintptr_t) &__ccm_bss_end
 		       - (uintptr_t) &__ccm_bss_start);
 #endif
 #if DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_dtcm), okay)
+	/*early_puts("---D\n");*/
 	z_early_memset(&__dtcm_bss_start, 0,
 		       (uintptr_t) &__dtcm_bss_end
 		       - (uintptr_t) &__dtcm_bss_start);
 #endif
 #if DT_NODE_HAS_STATUS(DT_CHOSEN(zephyr_ocm), okay)
+	/*early_puts("---E\n");*/
 	z_early_memset(&__ocm_bss_start, 0,
 		       (uintptr_t) &__ocm_bss_end
 		       - (uintptr_t) &__ocm_bss_start);
 #endif
 #ifdef CONFIG_CODE_DATA_RELOCATION
+	/*early_puts("---F\n");*/
 	extern void bss_zeroing_relocation(void);
 
 	bss_zeroing_relocation();
 #endif	/* CONFIG_CODE_DATA_RELOCATION */
 #ifdef CONFIG_COVERAGE_GCOV
+	/*early_puts("---G\n");*/
 	z_early_memset(&__gcov_bss_start, 0,
 		       ((uintptr_t) &__gcov_bss_end - (uintptr_t) &__gcov_bss_start));
 #endif /* CONFIG_COVERAGE_GCOV */
+	/*early_puts("---H\n");*/
 }
 
 #ifdef CONFIG_LINKER_USE_BOOT_SECTION
@@ -569,6 +577,7 @@ static void bg_thread_main(void *unused1, void *unused2, void *unused3)
 __boot_func
 static void init_idle_thread(int i)
 {
+	early_puts("init_idle_thread -- A\n");
 	struct k_thread *thread = &z_idle_threads[i];
 	k_thread_stack_t *stack = z_idle_stacks[i];
 	size_t stack_size = K_KERNEL_STACK_SIZEOF(z_idle_stacks[i]);
@@ -585,12 +594,16 @@ static void init_idle_thread(int i)
 #else
 	char *tname = NULL;
 #endif /* CONFIG_THREAD_NAME */
+	early_puts("init_idle_thread -- B\n");
 
 	z_setup_new_thread(thread, stack,
 			  stack_size, idle, &_kernel.cpus[i],
 			  NULL, NULL, K_IDLE_PRIO, K_ESSENTIAL,
 			  tname);
+
+	early_puts("init_idle_thread -- C\n");
 	z_mark_thread_as_started(thread);
+	early_puts("init_idle_thread -- D\n");
 
 #ifdef CONFIG_SMP
 	thread->base.is_idle = 1U;
@@ -599,17 +612,23 @@ static void init_idle_thread(int i)
 
 void z_init_cpu(int id)
 {
+	early_puts("z_init_cpu -- A\n");
 	init_idle_thread(id);
+	early_puts("z_init_cpu -- B\n");
 	_kernel.cpus[id].idle_thread = &z_idle_threads[id];
+	early_puts("z_init_cpu -- C\n");
 	_kernel.cpus[id].id = id;
+	early_puts("z_init_cpu -- D\n");
 	_kernel.cpus[id].irq_stack =
 		(K_KERNEL_STACK_BUFFER(z_interrupt_stacks[id]) +
 		 K_KERNEL_STACK_SIZEOF(z_interrupt_stacks[id]));
+	early_puts("z_init_cpu -- E\n");
 #ifdef CONFIG_SCHED_THREAD_USAGE_ALL
 	_kernel.cpus[id].usage = &_kernel.usage[id];
 	_kernel.cpus[id].usage->track_usage =
 		CONFIG_SCHED_THREAD_USAGE_AUTO_ENABLE;
 #endif
+	early_puts("z_init_cpu -- F\n");
 
 #ifdef CONFIG_PM
 	/*
@@ -661,16 +680,21 @@ static char *prepare_multithreading(void)
 	 */
 	_kernel.ready_q.cache = &z_main_thread;
 #endif /* CONFIG_SMP */
+	early_puts("before z_setup_new_thread\n");
 	stack_ptr = z_setup_new_thread(&z_main_thread, z_main_stack,
 				       K_THREAD_STACK_SIZEOF(z_main_stack),
 				       bg_thread_main,
 				       NULL, NULL, NULL,
 				       CONFIG_MAIN_THREAD_PRIORITY,
 				       K_ESSENTIAL, "main");
+	early_puts("z_setup_new_thread -- A\n");
 	z_mark_thread_as_started(&z_main_thread);
+	early_puts("z_setup_new_thread -- B\n");
 	z_ready_thread(&z_main_thread);
+	early_puts("z_setup_new_thread -- C\n");
 
 	z_init_cpu(0);
+	early_puts("z_setup_new_thread -- D\n");
 
 	return stack_ptr;
 }
@@ -740,31 +764,47 @@ __boot_func
 FUNC_NO_STACK_PROTECTOR
 FUNC_NORETURN void z_cstart(void)
 {
+	early_puts("z_cstart -> A\n");
 	/* gcov hook needed to get the coverage report.*/
 	gcov_static_init();
 
+	early_puts("z_cstart -> B\n");
 	/* initialize early init calls */
 	z_sys_init_run_level(INIT_LEVEL_EARLY);
 
+	early_puts("z_cstart -> C\n");
 	/* perform any architecture-specific initialization */
 	arch_kernel_init();
 
+	early_puts("z_cstart -> D\n");
 	LOG_CORE_INIT();
+	early_puts("z_cstart -> E\n");
 
 #if defined(CONFIG_MULTITHREADING)
 	z_dummy_thread_init(&_thread_dummy);
 #endif /* CONFIG_MULTITHREADING */
+	early_puts("z_cstart -> F\n");
 	/* do any necessary initialization of static devices */
+#ifdef CONFIG_BENCHMARKING
+#else
 	z_device_state_init();
+#endif
 
+	early_puts("z_cstart -> G\n");
 	/* perform basic hardware initialization */
 	z_sys_init_run_level(INIT_LEVEL_PRE_KERNEL_1);
 #if defined(CONFIG_SMP)
 	arch_smp_init();
 #endif
+	early_puts("z_cstart -> H\n");
+#ifdef CONFIG_BENCHMARKING
+#else
 	z_sys_init_run_level(INIT_LEVEL_PRE_KERNEL_2);
+#endif
+	early_puts("z_cstart -> I\n");
 
 #ifdef CONFIG_STACK_CANARIES
+	early_puts("z_cstart -> J\n");
 	uintptr_t stack_guard;
 
 	z_early_rand_get((uint8_t *)&stack_guard, sizeof(stack_guard));
@@ -773,20 +813,24 @@ FUNC_NORETURN void z_cstart(void)
 #endif	/* CONFIG_STACK_CANARIES */
 
 #ifdef CONFIG_TIMING_FUNCTIONS_NEED_AT_BOOT
+	early_puts("z_cstart -> K\n");
 	timing_init();
 	timing_start();
 #endif /* CONFIG_TIMING_FUNCTIONS_NEED_AT_BOOT */
 
 #ifdef CONFIG_MULTITHREADING
+	early_puts("z_cstart -> L\n");
 	switch_to_main_thread(prepare_multithreading());
 #else
 #ifdef ARCH_SWITCH_TO_MAIN_NO_MULTITHREADING
+	early_puts("z_cstart -> M\n");
 	/* Custom ARCH-specific routine to switch to main()
 	 * in the case of no multi-threading.
 	 */
 	ARCH_SWITCH_TO_MAIN_NO_MULTITHREADING(bg_thread_main,
 		NULL, NULL, NULL);
 #else
+	early_puts("z_cstart -> N\n");
 	bg_thread_main(NULL, NULL, NULL);
 
 	/* LCOV_EXCL_START
@@ -797,6 +841,7 @@ FUNC_NORETURN void z_cstart(void)
 	}
 	/* LCOV_EXCL_STOP */
 #endif /* ARCH_SWITCH_TO_MAIN_NO_MULTITHREADING */
+	early_puts("z_cstart -> O\n");
 #endif /* CONFIG_MULTITHREADING */
 
 	/*
