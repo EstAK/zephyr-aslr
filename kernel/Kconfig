@@ -210,6 +210,12 @@ config BENCHMARKING
 	  This config is solely used for bechmarking purposes, it does
 	  not bring any sort of performances
 
+config SCTLR_BENCHMARKING
+	bool "Toggling the sctlr"
+	default 0
+	help
+	  This config is used for benchmarking purposes
+
 config EXPERIMENTAL_ASLR
 	bool "Thread stack address randomization"
 	depends on MMU && ARCH_SUPPORTS_EXPERIMENTAL_ASLR

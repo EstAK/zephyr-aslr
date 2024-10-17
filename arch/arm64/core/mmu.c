@@ -764,7 +764,6 @@ struct arm_mmu_flat_range {
 };
 
 #ifdef CONFIG_BENCHMARKING
-//#define MEM_TYPE MT_DEVICE_GRE
 #define MEM_TYPE MT_NORMAL_NC
 #else
 #define MEM_TYPE MT_NORMAL
@@ -949,11 +948,14 @@ static void enable_mmu_el1(struct arm_mmu_ptables *ptables, unsigned int flags)
 
 	/* Enable the MMU and data cache */
 	val = read_sctlr_el1();
-#ifdef CONFIG_BENCHMARKING
-	write_sctlr_el1(val | SCTLR_M_BIT);
+
+	write_sctlr_el1(val
+#ifdef CONFIG_SCTLR_BENCHMARKING
+
 #else
-	write_sctlr_el1(val | SCTLR_M_BIT | SCTLR_C_BIT);
+        | SCTLR_C_BIT
 #endif
+        | SCTLR_M_BIT);
 
 	/* Ensure the MMU enable takes effect immediately */
 	barrier_isync_fence_full();
@@ -1348,7 +1350,7 @@ static void z_arm64_swap_ptables(struct k_thread *incoming)
 	MMU_DEBUG("TTBR0 switch from %#llx to %#llx\n", curr_ttbr0, new_ttbr0);
 	z_arm64_set_ttbr0(new_ttbr0);
 
-#ifdef CONFIG_BENCHMARKING
+#ifdef CONFIG_SCTLR_BENCHMARKING
 	invalidate_tlb_all();
 #else
 	if (get_asid(curr_ttbr0) == get_asid(new_ttbr0)) {
